@@ -69,7 +69,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          terraform output -json > phase1-outputs.json 2>/dev/null
+          # Generar un archivo TXT con los outputs de Terraform
+          terraform output > phase1-outputs.txt 2>/dev/null || echo "No outputs available" > phase1-outputs.txt
+
+          echo "phase1-outputs.txt generado exitosamente:"
+          cat phase1-outputs.txt
         shell: bash
 
       # ----------------------------
@@ -83,40 +87,24 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform init
 
-      - name: Validate Phase 1 Outputs
-        working-directory: ./phase1
-        run: |
-          if [ ! -s phase1-outputs.json ]; then
-            echo "Error: phase1-outputs.json está vacío o no existe."
-            exit 1
-          fi
-
-          if ! jq . phase1-outputs.json >/dev/null 2>&1; then
-            echo "Error: phase1-outputs.json no contiene JSON válido."
-            exit 1
-          fi
-
-          echo "Contenido de phase1-outputs.json:"
-          cat phase1-outputs.json
-
       - name: Inject Phase 1 Outputs to Phase 2
         working-directory: ./phase2
         run: |
-          # Verificar si el archivo existe y tiene contenido
-          if [ ! -s ../phase1/phase1-outputs.json ]; then
-            echo "Error: phase1-outputs.json está vacío o no existe."
+          # Verificar si el archivo TXT existe
+          if [ ! -s ../phase1/phase1-outputs.txt ]; then
+            echo "Error: phase1-outputs.txt está vacío o no existe."
             exit 1
           fi
 
-          # Extraer valores del JSON con jq y manejar casos donde no haya valores válidos
-          API_GATEWAY_STAGE_ARN=$(jq -r '.api_gateway_stage_arn.value // empty' ../phase1/phase1-outputs.json)
-          API_GATEWAY_ID=$(jq -r '.api_gateway_id.value // empty' ../phase1/phase1-outputs.json)
+          # Extraer valores específicos del archivo TXT
+          API_GATEWAY_STAGE_ARN=$(grep "api_gateway_stage_arn" ../phase1/phase1-outputs.txt | awk '{print $3}')
+          API_GATEWAY_ID=$(grep "api_gateway_id" ../phase1/phase1-outputs.txt | awk '{print $3}')
 
           # Validar si los valores se extrajeron correctamente
           if [ -z "$API_GATEWAY_STAGE_ARN" ] || [ -z "$API_GATEWAY_ID" ]; then
-            echo "Error: No se pudieron extraer todos los valores necesarios del archivo JSON."
-            echo "Contenido del archivo JSON:"
-            cat ../phase1/phase1-outputs.json
+            echo "Error: No se pudieron extraer los valores necesarios del archivo TXT."
+            echo "Contenido del archivo TXT:"
+            cat ../phase1/phase1-outputs.txt
             exit 1
           fi
 
