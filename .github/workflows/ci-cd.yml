@@ -69,7 +69,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          terraform output -json > phase1-outputs.json
+          terraform output -json > phase1-outputs.json 2>/dev/null
         shell: bash
 
       # ----------------------------
@@ -90,14 +90,43 @@ jobs:
             echo "Error: phase1-outputs.json está vacío o no existe."
             exit 1
           fi
+
+          if ! jq . phase1-outputs.json >/dev/null 2>&1; then
+            echo "Error: phase1-outputs.json no contiene JSON válido."
+            exit 1
+          fi
+
           echo "Contenido de phase1-outputs.json:"
           cat phase1-outputs.json
 
       - name: Inject Phase 1 Outputs to Phase 2
         working-directory: ./phase2
         run: |
-          API_GATEWAY_STAGE_ARN=$(jq -r '.api_gateway_stage_arn.value' ../phase1/phase1-outputs.json)
+          # Verificar si el archivo existe y tiene contenido
+          if [ ! -s ../phase1/phase1-outputs.json ]; then
+            echo "Error: phase1-outputs.json está vacío o no existe."
+            exit 1
+          fi
+
+          # Extraer valores del JSON con jq y manejar casos donde no haya valores válidos
+          API_GATEWAY_STAGE_ARN=$(jq -r '.api_gateway_stage_arn.value // empty' ../phase1/phase1-outputs.json)
+          API_GATEWAY_ID=$(jq -r '.api_gateway_id.value // empty' ../phase1/phase1-outputs.json)
+
+          # Validar si los valores se extrajeron correctamente
+          if [ -z "$API_GATEWAY_STAGE_ARN" ] || [ -z "$API_GATEWAY_ID" ]; then
+            echo "Error: No se pudieron extraer todos los valores necesarios del archivo JSON."
+            echo "Contenido del archivo JSON:"
+            cat ../phase1/phase1-outputs.json
+            exit 1
+          fi
+
+          # Crear terraform.auto.tfvars con los valores extraídos
           echo "api_gateway_stage_arn = \"$API_GATEWAY_STAGE_ARN\"" > terraform.auto.tfvars
+          echo "api_gateway_id = \"$API_GATEWAY_ID\"" >> terraform.auto.tfvars
+
+          # Mostrar el contenido del archivo generado para confirmación
+          echo "Contenido de terraform.auto.tfvars:"
+          cat terraform.auto.tfvars
 
       - name: Terraform Validate - Phase 2
         working-directory: ./phase2
