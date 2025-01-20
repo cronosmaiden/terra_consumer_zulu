@@ -1,6 +1,7 @@
 region = "us-east-1"
 
 waf_name        = "test-waf-new"
+waf_description = "test-waf-description"
 rate_limit      = 1000
 
 waf_rules = [

@@ -11,7 +11,6 @@ variable "waf_name" {
 variable "waf_description" {
   description = "Descripción del Web ACL."
   type        = string
-  default     = ""
 }
 
 variable "rate_limit" {
