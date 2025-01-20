@@ -110,6 +110,7 @@ jobs:
 
           # Crear terraform.auto.tfvars con los valores extraídos
           echo "resource_arn = \"$RESOURCE_ARN\"" > terraform.auto.tfvars
+          echo "api_gateway_stage_arn = \"$RESOURCE_ARN\"" > terraform.auto.tfvars
           echo "api_gateway_id = \"$API_GATEWAY_ID\"" >> terraform.auto.tfvars
 
           # Mostrar el contenido del archivo generado para confirmación
