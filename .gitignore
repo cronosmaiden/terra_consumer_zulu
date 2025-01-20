@@ -1,0 +1,7 @@
+# Excluir directorios y archivos de Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+
+# Archivos de estado y planes de Terraform
+**/terraform.tfstate
+**/terraform.tfstate.backup

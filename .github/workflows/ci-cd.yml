@@ -1,0 +1,112 @@
+name: Terraform CI/CD - Phased Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply in Phases
+    runs-on: ubuntu-latest
+    environment: dev  # Especificar el entorno "dev" para acceder a los secrets del entorno
+
+    steps:
+      # ----------------------------
+      # Configuración Inicial
+      # ----------------------------
+
+      # 1. Clonar el repositorio
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Configurar Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.2
+
+      # ----------------------------
+      # Fase 1: Deploy de Lambda y API Gateway
+      # ----------------------------
+
+      - name: Terraform Init - Phase 1
+        working-directory: ./phase1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform init
+
+      - name: Terraform Validate - Phase 1
+        working-directory: ./phase1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform validate
+
+      - name: Terraform Plan - Phase 1
+        working-directory: ./phase1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform plan -out=tfplan-phase1
+
+      - name: Terraform Apply - Phase 1
+        working-directory: ./phase1
+        if: github.event_name == 'push'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform apply -auto-approve tfplan-phase1
+
+      - name: Extract Outputs - Phase 1
+        working-directory: ./phase1
+        id: phase1_outputs
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform output -json > phase1-outputs.json
+        shell: bash
+
+      # ----------------------------
+      # Fase 2: Asociar el WAF al API Gateway
+      # ----------------------------
+
+      - name: Terraform Init - Phase 2
+        working-directory: ./phase2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform init
+
+      - name: Inject Phase 1 Outputs to Phase 2
+        working-directory: ./phase2
+        run: |
+          API_GATEWAY_STAGE_ARN=$(jq -r '.api_gateway_stage_arn.value' ../phase1/phase1-outputs.json)
+          echo "api_gateway_stage_arn = \"$API_GATEWAY_STAGE_ARN\"" > terraform.auto.tfvars
+
+      - name: Terraform Validate - Phase 2
+        working-directory: ./phase2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform validate
+
+      - name: Terraform Plan - Phase 2
+        working-directory: ./phase2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform plan -out=tfplan-phase2
+
+      - name: Terraform Apply - Phase 2
+        working-directory: ./phase2
+        if: github.event_name == 'push'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform apply -auto-approve tfplan-phase2
