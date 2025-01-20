@@ -83,6 +83,16 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform init
 
+      - name: Validate Phase 1 Outputs
+        working-directory: ./phase1
+        run: |
+          if [ ! -s phase1-outputs.json ]; then
+            echo "Error: phase1-outputs.json está vacío o no existe."
+            exit 1
+          fi
+          echo "Contenido de phase1-outputs.json:"
+          cat phase1-outputs.json
+
       - name: Inject Phase 1 Outputs to Phase 2
         working-directory: ./phase2
         run: |
