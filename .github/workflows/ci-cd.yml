@@ -97,11 +97,11 @@ jobs:
           fi
 
           # Extraer valores específicos del archivo TXT y limpiar comillas dobles, saltos de línea, y '=' final
-          API_GATEWAY_STAGE_ARN=$(grep "api_gateway_stage_arn" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//; s/=$//')
-          API_GATEWAY_ID=$(grep "api_gateway_id" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//; s/=$//')
+          RESOURCE_ARN=$(grep "api_gateway_stage_arn" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//; s/=$//')
+          API_GATEWAY_ID=$(grep "api_gateway_id" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//')
 
           # Validar si los valores se extrajeron correctamente
-          if [ -z "$API_GATEWAY_STAGE_ARN" ] || [ -z "$API_GATEWAY_ID" ]; then
+          if [ -z "$RESOURCE_ARN" ] || [ -z "$API_GATEWAY_ID" ]; then
             echo "Error: No se pudieron extraer los valores necesarios del archivo TXT."
             echo "Contenido del archivo TXT:"
             cat ../phase1/phase1-outputs.txt
@@ -109,7 +109,7 @@ jobs:
           fi
 
           # Crear terraform.auto.tfvars con los valores extraídos
-          echo "api_gateway_stage_arn = \"$API_GATEWAY_STAGE_ARN\"" > terraform.auto.tfvars
+          echo "resource_arn = \"$RESOURCE_ARN\"" > terraform.auto.tfvars
           echo "api_gateway_id = \"$API_GATEWAY_ID\"" >> terraform.auto.tfvars
 
           # Mostrar el contenido del archivo generado para confirmación
