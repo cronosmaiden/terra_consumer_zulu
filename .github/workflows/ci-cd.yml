@@ -96,9 +96,9 @@ jobs:
             exit 1
           fi
 
-          # Extraer valores específicos del archivo TXT y limpiar comillas dobles y saltos de línea
-          API_GATEWAY_STAGE_ARN=$(grep "api_gateway_stage_arn" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//' | tr -d '\n')
-          API_GATEWAY_ID=$(grep "api_gateway_id" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//' | tr -d '\n')
+          # Extraer valores específicos del archivo TXT y limpiar comillas dobles, saltos de línea, y '=' final
+          API_GATEWAY_STAGE_ARN=$(grep "api_gateway_stage_arn" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//; s/=$//')
+          API_GATEWAY_ID=$(grep "api_gateway_id" ../phase1/phase1-outputs.txt | awk '{print $3}' | sed 's/^"//; s/"$//; s/=$//')
 
           # Validar si los valores se extrajeron correctamente
           if [ -z "$API_GATEWAY_STAGE_ARN" ] || [ -z "$API_GATEWAY_ID" ]; then
